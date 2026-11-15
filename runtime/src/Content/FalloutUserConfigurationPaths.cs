@@ -25,7 +25,7 @@ internal static class FalloutUserConfigurationPaths
         var iniOwner = existing.FirstOrDefault(path =>
             File.Exists(Path.Combine(path, "Fallout.ini")) ||
             File.Exists(Path.Combine(path, "FalloutPrefs.ini")));
-        return iniOwner ?? candidates[0];
+        return iniOwner ?? existing.FirstOrDefault() ?? candidates[0];
     }
 
     internal static IReadOnlyList<string> Candidates(string contentRoot, string documents, string gameFolder, string appId)
