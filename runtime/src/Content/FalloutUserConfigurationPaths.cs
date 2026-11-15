@@ -31,9 +31,6 @@ internal static class FalloutUserConfigurationPaths
     internal static IReadOnlyList<string> Candidates(string contentRoot, string documents, string gameFolder, string appId)
     {
         var result = new List<string>();
-        if (!string.IsNullOrWhiteSpace(documents))
-            result.Add(Path.GetFullPath(Path.Combine(documents, "My Games", gameFolder)));
-
         var fullContentRoot = Path.GetFullPath(contentRoot);
         var installRoot = Directory.GetParent(fullContentRoot)?.FullName;
         var commonDirectory = installRoot is null ? null : Directory.GetParent(installRoot)?.FullName;
@@ -49,6 +46,10 @@ internal static class FalloutUserConfigurationPaths
             result.Add(Path.Combine(usersRoot, "steamuser", "Documents", "My Games", gameFolder));
         }
 
+        // The selected Steam prefix is installation-specific; host Documents
+        // is only a fallback when no usable prefix configuration exists.
+        if (!string.IsNullOrWhiteSpace(documents))
+            result.Add(Path.GetFullPath(Path.Combine(documents, "My Games", gameFolder)));
         if (result.Count == 0)
             result.Add(Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                 "My Games", gameFolder)));
