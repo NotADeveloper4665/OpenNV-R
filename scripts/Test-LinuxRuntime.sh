@@ -22,5 +22,10 @@ if [[ -n "$godot" ]]; then
     "$godot" --headless --path runtime --editor --quit
 fi
 
-git diff --check
+base_ref="${OPENNV_BASE_REF:-origin/main}"
+if git rev-parse --verify "$base_ref" >/dev/null 2>&1; then
+    git diff --check "$base_ref...HEAD"
+else
+    git diff --check
+fi
 printf 'OPENNV_LINUX_RUNTIME_SMOKE_PASS godot=%s\n' "${godot:-not-requested}"
