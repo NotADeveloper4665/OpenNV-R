@@ -119,6 +119,8 @@ npm test --prefix .\desktop
 .\scripts\Test-GodotRuntime.ps1 -Godot $godot
 ```
 
+For Linux development, run `scripts/Test-LinuxRuntime.sh` with .NET 10 installed. Pass the Godot 4.8-dev7 Mono executable as the first argument (or set `OPENNV_GODOT`) to include a headless native-project load check. This is a Linux build/contract smoke gate, not a replacement for the full Windows acceptance gate or matched-retail parity evidence.
+
 4.8-dev7 is the current development snapshot, rather than a stable release.
 Its mip-level texture streaming is enabled in the project. Owned DDS textures
 still use direct resident uploads; the new setting does not stream that route.

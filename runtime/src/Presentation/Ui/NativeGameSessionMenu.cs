@@ -78,9 +78,28 @@ internal sealed partial class NativeGameSessionMenu : Control
 
     private Button AddButton(string name, string text, Action action)
     {
-        var button = new Button { Name = name, Text = text, CustomMinimumSize = new(760, 50) };
+        var button = new Button { Name = name, Text = text, CustomMinimumSize = new(760, 50), FocusMode = Control.FocusModeEnum.All };
+        button.AddThemeColorOverride("font_focus_color", new Color(1f, 0.84f, 0.48f));
+        button.AddThemeStyleboxOverride("focus", new StyleBoxFlat
+        {
+            BgColor = new Color(0.34f, 0.22f, 0.08f, 0.18f),
+            BorderColor = new Color(0.92f, 0.74f, 0.18f, 0.95f),
+            BorderWidthLeft = 2,
+            BorderWidthTop = 2,
+            BorderWidthRight = 2,
+            BorderWidthBottom = 2,
+            CornerRadiusTopLeft = 3,
+            CornerRadiusTopRight = 3,
+            CornerRadiusBottomLeft = 3,
+            CornerRadiusBottomRight = 3,
+        });
         button.Pressed += () => { if (!_busy || name == "CancelSave" && _saving) Run(action); };
-        _body.AddChild(button); return button;
+        _body.AddChild(button);
+        // The first actionable row is immediately available to keyboard and
+        // controller focus navigation after every pause/save page rebuild.
+        if (!_body.GetChildren().OfType<Control>().Any(child => child.HasFocus()))
+            button.GrabFocus();
+        return button;
     }
 
     private void Run(Action action)

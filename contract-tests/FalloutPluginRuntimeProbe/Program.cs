@@ -118,6 +118,11 @@ if (args is ["--test-static-settings"])
     StaticExecutableSettingsContracts.Run();
     return;
 }
+if (args is ["--test-user-config-paths"])
+{
+    FalloutUserConfigurationPathContracts.Run();
+    return;
+}
 if (args is ["--test-hit-handlers"])
 {
     NvseEventProbe.HitHandlers();
@@ -169,6 +174,7 @@ ScriptPostfixProbe.Run();
 ScriptSourceStringProbe.Run();
 NumericIniSettingProbe.Run();
 StaticExecutableSettingsContracts.Run();
+FalloutUserConfigurationPathContracts.Run();
 ScriptValueProbe.Run();
 ScriptArrayProbe.Run();
 ScriptStorageProbe.Run();
