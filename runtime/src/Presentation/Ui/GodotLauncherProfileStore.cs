@@ -418,7 +418,7 @@ internal sealed class GodotLauncherProfileStore
             // home directory. Include both native Steam and the Steam Flatpak.
             // These are discovery candidates only: NativeGameInstallation.Detect
             // still validates the selected game's actual files before saving it.
-            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var home = System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile);
             if (!string.IsNullOrWhiteSpace(home))
             {
                 commonPrefixes.Add(Path.Combine(home, ".steam", "steam", "steamapps", "common"));
