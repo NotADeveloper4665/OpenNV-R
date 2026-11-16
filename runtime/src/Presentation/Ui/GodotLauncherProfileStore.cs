@@ -413,6 +413,21 @@ internal sealed class GodotLauncherProfileStore
                 commonPrefixes.Add(Path.Combine(driveRoot, "GOG Games"));
                 commonPrefixes.Add(Path.Combine(driveRoot, "Games", "GOG Games"));
             }
+
+            // Linux Steam installations are commonly stored beneath the user's
+            // home directory. Include both native Steam and the Steam Flatpak.
+            // These are discovery candidates only: NativeGameInstallation.Detect
+            // still validates the selected game's actual files before saving it.
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            if (!string.IsNullOrWhiteSpace(home))
+            {
+                commonPrefixes.Add(Path.Combine(home, ".steam", "steam", "steamapps", "common"));
+                commonPrefixes.Add(Path.Combine(home, ".local", "share", "Steam", "steamapps", "common"));
+                commonPrefixes.Add(Path.Combine(home, ".var", "app", "com.valvesoftware.Steam",
+                    ".local", "share", "Steam", "steamapps", "common"));
+                commonPrefixes.Add(Path.Combine(home, "SteamLibrary", "steamapps", "common"));
+                commonPrefixes.Add(Path.Combine(home, "Games", "Steam", "steamapps", "common"));
+            }
         }
         catch
         {
