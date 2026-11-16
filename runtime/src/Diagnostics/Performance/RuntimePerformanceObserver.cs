@@ -32,6 +32,10 @@ internal partial class RuntimePerformanceObserver : Node
     private PerformanceMetricAccumulator _staticMemoryBytes;
     private PerformanceMetricAccumulator _renderedObjectCount;
     private PerformanceMetricAccumulator _renderedPrimitiveCount;
+    private PerformanceMetricAccumulator _renderedDrawCallCount;
+    private PerformanceMetricAccumulator _videoMemoryBytes;
+    private PerformanceMetricAccumulator _textureMemoryBytes;
+    private PerformanceMetricAccumulator _renderBufferMemoryBytes;
 
     internal void Configure(
         RuntimePerformanceConfiguration configuration,
@@ -81,6 +85,14 @@ internal partial class RuntimePerformanceObserver : Node
             Godot.Performance.GetMonitor(Godot.Performance.Monitor.RenderTotalObjectsInFrame));
         _renderedPrimitiveCount.Add(
             Godot.Performance.GetMonitor(Godot.Performance.Monitor.RenderTotalPrimitivesInFrame));
+        _renderedDrawCallCount.Add(
+            Godot.Performance.GetMonitor(Godot.Performance.Monitor.RenderTotalDrawCallsInFrame));
+        _videoMemoryBytes.Add(
+            Godot.Performance.GetMonitor(Godot.Performance.Monitor.RenderVideoMemUsed));
+        _textureMemoryBytes.Add(
+            Godot.Performance.GetMonitor(Godot.Performance.Monitor.RenderTextureMemUsed));
+        _renderBufferMemoryBytes.Add(
+            Godot.Performance.GetMonitor(Godot.Performance.Monitor.RenderBufferMemUsed));
         _sampleCount++;
     }
 
@@ -110,6 +122,10 @@ internal partial class RuntimePerformanceObserver : Node
                 staticMemoryBytes = _staticMemoryBytes.Report("bytes"),
                 renderedObjectCount = _renderedObjectCount.Report("objects"),
                 renderedPrimitiveCount = _renderedPrimitiveCount.Report("primitives"),
+                renderedDrawCallCount = _renderedDrawCallCount.Report("draw-calls"),
+                videoMemoryBytes = _videoMemoryBytes.Report("bytes"),
+                textureMemoryBytes = _textureMemoryBytes.Report("bytes"),
+                renderBufferMemoryBytes = _renderBufferMemoryBytes.Report("bytes"),
             },
         };
         var fullPath = Path.GetFullPath(reportPath);
