@@ -36,9 +36,19 @@ internal sealed class FalloutInstallationSettings
         settings._numericIni = new(() => settings.ReadNumericIni(source));
         settings.Add(Path.Combine(Path.GetDirectoryName(source.ContentRoot)!, "Fallout_default.ini"), true, FalloutIniCollection.Main);
         var gameFolder = source.Game == RuntimeLiveContentSource.FalloutNewVegasGame ? "FalloutNV" : "Fallout3";
+        var appId = source.Game == RuntimeLiveContentSource.FalloutNewVegasGame ? "22380" : "22300";
         var documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-        var user = Path.Combine(documents, "My Games", gameFolder);
-        settings._renderer = new(() => FalloutRendererConfiguration.Read(File.ReadAllText(Path.Combine(user, "RendererInfo.txt"))));
+        var user = FalloutUserConfigurationPaths.Resolve(source.ContentRoot, documents, gameFolder, appId);
+        settings._renderer = new(() =>
+        {
+            var rendererPath = Path.Combine(user, "RendererInfo.txt");
+            if (!File.Exists(rendererPath))
+                throw new FileNotFoundException(
+                    $"RendererInfo.txt was not found in the selected game configuration directory '{user}'. " +
+                    "On Steam/Proton, launch the original game launcher once to generate this GPU-specific file.",
+                    rendererPath);
+            return FalloutRendererConfiguration.Read(File.ReadAllText(rendererPath));
+        });
         settings.Add(Path.Combine(user, "Fallout.ini"), false, FalloutIniCollection.Main);
         settings.Add(Path.Combine(user, "FalloutPrefs.ini"), false, FalloutIniCollection.Prefs, FalloutIniCollection.Renderer);
         settings.Add(Path.Combine(user, "FalloutCustom.ini"), false, FalloutIniCollection.Main);

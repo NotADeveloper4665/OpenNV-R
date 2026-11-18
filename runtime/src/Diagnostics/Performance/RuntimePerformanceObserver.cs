@@ -14,6 +14,16 @@ internal partial class RuntimePerformanceObserver : Node
     private double _elapsedSeconds;
     private long _sampleCount;
     private bool _reportWritten;
+    private const int RecentFrameSampleCapacity = 4096;
+    private const double SixtyHertzFrameBudgetMilliseconds = 1000.0 / 60.0;
+    private readonly double[] _recentFrameTimesMilliseconds = new double[RecentFrameSampleCapacity];
+    private int _recentFrameWriteIndex;
+    private int _recentFrameSampleCount;
+    private long _frameCount;
+    private long _framesOverSixtyHertzBudget;
+    private double _frameTimeSumMilliseconds;
+    private double _minimumFrameTimeMilliseconds;
+    private double _maximumFrameTimeMilliseconds;
     private PerformanceMetricAccumulator _framesPerSecond;
     private PerformanceMetricAccumulator _processSeconds;
     private PerformanceMetricAccumulator _physicsProcessSeconds;
@@ -22,6 +32,10 @@ internal partial class RuntimePerformanceObserver : Node
     private PerformanceMetricAccumulator _staticMemoryBytes;
     private PerformanceMetricAccumulator _renderedObjectCount;
     private PerformanceMetricAccumulator _renderedPrimitiveCount;
+    private PerformanceMetricAccumulator _renderedDrawCallCount;
+    private PerformanceMetricAccumulator _videoMemoryBytes;
+    private PerformanceMetricAccumulator _textureMemoryBytes;
+    private PerformanceMetricAccumulator _renderBufferMemoryBytes;
 
     internal void Configure(
         RuntimePerformanceConfiguration configuration,
@@ -38,6 +52,7 @@ internal partial class RuntimePerformanceObserver : Node
 
     public override void _Process(double delta)
     {
+        RecordFrameTime(delta * 1000.0);
         _elapsedSeconds += delta;
         if (_elapsedSeconds < _configuration.SampleIntervalSeconds)
             return;
@@ -70,6 +85,14 @@ internal partial class RuntimePerformanceObserver : Node
             Godot.Performance.GetMonitor(Godot.Performance.Monitor.RenderTotalObjectsInFrame));
         _renderedPrimitiveCount.Add(
             Godot.Performance.GetMonitor(Godot.Performance.Monitor.RenderTotalPrimitivesInFrame));
+        _renderedDrawCallCount.Add(
+            Godot.Performance.GetMonitor(Godot.Performance.Monitor.RenderTotalDrawCallsInFrame));
+        _videoMemoryBytes.Add(
+            Godot.Performance.GetMonitor(Godot.Performance.Monitor.RenderVideoMemUsed));
+        _textureMemoryBytes.Add(
+            Godot.Performance.GetMonitor(Godot.Performance.Monitor.RenderTextureMemUsed));
+        _renderBufferMemoryBytes.Add(
+            Godot.Performance.GetMonitor(Godot.Performance.Monitor.RenderBufferMemUsed));
         _sampleCount++;
     }
 
@@ -91,6 +114,7 @@ internal partial class RuntimePerformanceObserver : Node
             metrics = new
             {
                 framesPerSecond = _framesPerSecond.Report("frames-per-second"),
+                frameTimeMilliseconds = FrameTimeReport(),
                 processSeconds = _processSeconds.Report("seconds"),
                 physicsProcessSeconds = _physicsProcessSeconds.Report("seconds"),
                 nodeCount = _nodeCount.Report("nodes"),
@@ -98,6 +122,10 @@ internal partial class RuntimePerformanceObserver : Node
                 staticMemoryBytes = _staticMemoryBytes.Report("bytes"),
                 renderedObjectCount = _renderedObjectCount.Report("objects"),
                 renderedPrimitiveCount = _renderedPrimitiveCount.Report("primitives"),
+                renderedDrawCallCount = _renderedDrawCallCount.Report("draw-calls"),
+                videoMemoryBytes = _videoMemoryBytes.Report("bytes"),
+                textureMemoryBytes = _textureMemoryBytes.Report("bytes"),
+                renderBufferMemoryBytes = _renderBufferMemoryBytes.Report("bytes"),
             },
         };
         var fullPath = Path.GetFullPath(reportPath);
@@ -110,6 +138,67 @@ internal partial class RuntimePerformanceObserver : Node
         File.Move(temporaryPath, fullPath, true);
         GD.Print(
             $"OPENNV_PERF_REPORT path={fullPath} samples={_sampleCount} thresholds=none");
+    }
+
+    private void RecordFrameTime(double milliseconds)
+    {
+        if (!double.IsFinite(milliseconds) || milliseconds < 0.0)
+            return;
+
+        if (_frameCount == 0)
+            _minimumFrameTimeMilliseconds = milliseconds;
+        else
+            _minimumFrameTimeMilliseconds = Math.Min(_minimumFrameTimeMilliseconds, milliseconds);
+
+        _maximumFrameTimeMilliseconds = Math.Max(_maximumFrameTimeMilliseconds, milliseconds);
+        _frameTimeSumMilliseconds += milliseconds;
+        _frameCount++;
+        if (milliseconds > SixtyHertzFrameBudgetMilliseconds)
+            _framesOverSixtyHertzBudget++;
+
+        _recentFrameTimesMilliseconds[_recentFrameWriteIndex] = milliseconds;
+        _recentFrameWriteIndex = (_recentFrameWriteIndex + 1) % RecentFrameSampleCapacity;
+        _recentFrameSampleCount = Math.Min(_recentFrameSampleCount + 1, RecentFrameSampleCapacity);
+    }
+
+    private object FrameTimeReport()
+    {
+        var recent = new double[_recentFrameSampleCount];
+        var start = (_recentFrameWriteIndex - _recentFrameSampleCount + RecentFrameSampleCapacity) %
+            RecentFrameSampleCapacity;
+        for (var index = 0; index < _recentFrameSampleCount; index++)
+            recent[index] = _recentFrameTimesMilliseconds[(start + index) % RecentFrameSampleCapacity];
+        Array.Sort(recent);
+
+        return new
+        {
+            unit = "milliseconds",
+            sampleCount = _frameCount,
+            minimum = _frameCount == 0 ? 0.0 : _minimumFrameTimeMilliseconds,
+            maximum = _maximumFrameTimeMilliseconds,
+            average = _frameCount == 0 ? 0.0 : _frameTimeSumMilliseconds / _frameCount,
+            recentWindowSampleCount = _recentFrameSampleCount,
+            recentWindowCapacity = RecentFrameSampleCapacity,
+            recentWindowPercentiles = new
+            {
+                p50 = Percentile(recent, 0.50),
+                p95 = Percentile(recent, 0.95),
+                p99 = Percentile(recent, 0.99),
+            },
+            sixtyHertzBudgetMilliseconds = SixtyHertzFrameBudgetMilliseconds,
+            framesOverSixtyHertzBudget = _framesOverSixtyHertzBudget,
+            framesOverSixtyHertzBudgetPercent = _frameCount == 0
+                ? 0.0
+                : _framesOverSixtyHertzBudget * 100.0 / _frameCount,
+        };
+    }
+
+    private static double Percentile(double[] sortedValues, double percentile)
+    {
+        if (sortedValues.Length == 0)
+            return 0.0;
+        var index = (int)Math.Ceiling(percentile * sortedValues.Length) - 1;
+        return sortedValues[Math.Clamp(index, 0, sortedValues.Length - 1)];
     }
 
     private struct PerformanceMetricAccumulator
